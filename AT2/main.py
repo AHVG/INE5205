@@ -103,12 +103,12 @@ def make_histogram(df):
     plt.title('Histograma dos Preços das Bebidas')
     plt.show()
 
-    plt.figure(figsize=(10, 6))
-    plt.boxplot(df["C03 - VIDRO 600ML RET"])
-    plt.title('Boxplot dos Preços das Bebidas')
-    plt.ylabel('Preço ($)')
-    plt.xticks([1], ['Bebidas'])
-    plt.grid(True)
+    df["C03 - VIDRO 600ML RET"].plot(kind='box')
+    plt.text(x=1, y=df["C03 - VIDRO 600ML RET"].min(), s='X1', ha='center', va='top')
+    plt.text(x=1, y=df["C03 - VIDRO 600ML RET"].quantile(0.25), s='Q1', ha='center', va='center')
+    plt.text(x=1, y=df["C03 - VIDRO 600ML RET"].median(), s='Q2', ha='center', va='center')
+    plt.text(x=1, y=df["C03 - VIDRO 600ML RET"].quantile(0.75), s='Q3', ha='center', va='center')
+    plt.text(x=1, y=df["C03 - VIDRO 600ML RET"].max(), s='Xn', ha='center', va='bottom')
     plt.show()
 
 
