@@ -26,45 +26,6 @@ def make_histogram(df):
                 ranges_df[k] += 1
                 break
 
-    print(df.iloc[0, 7])
-    print(" N: ", end="")
-    print(N_df)
-
-    print()
-    print(" Min e max: ", end="")
-    print(min_df, end=" ")
-    print(max_df)
-    print(" R: ", end="")
-    print(R_df)
-
-    print()
-    print(" Raiz(N): ", end="")
-    print(raiz_N_df)
-    print(" Sturges(N): ", end="")
-    print(sturges_N_df)
-    print(" Num class: ", end="")
-    print(num_class)
-
-    print()
-    print(" C raiz N: ", end="")
-    print(C_raiz_N)
-    print(" C sturges N: ", end="")
-    print(C_sturges_N)
-    print(" C: ", end="")
-    print(C_df)
-
-    print()
-    print(" Histogram: ")
-    acc = 0
-
-    for k in ranges_df.keys():
-        print(f" {k[0]:5.2f} |-- {k[1]:5.2f} | " + "/" * ranges_df[k])
-        acc += ranges_df[k]
-    
-    print(" TOTAL           |", acc)
-    print()
-    print()
-
     data = {
         "k": [],
         "CLASSES": [],
@@ -136,15 +97,10 @@ def make_histogram(df):
 
     print(pd.concat([spec_df, ranges_df, param_df], axis=1))
 
-    # Criando o histograma
     plt.hist(df["C03 - VIDRO 600ML RET"], bins=num_class, edgecolor='black')
-
-    # Adicionando rótulos e título
     plt.xlabel('Preço ($)')
     plt.ylabel('Frequência')
     plt.title('Histograma dos Preços das Bebidas')
-
-    # Exibindo o gráfico
     plt.show()
 
     plt.figure(figsize=(10, 6))
