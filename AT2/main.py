@@ -1,5 +1,7 @@
 import pandas as pd
 import math
+import matplotlib.pyplot as plt
+
 
 def make_histogram(df):
     N_df = len(df)
@@ -106,7 +108,20 @@ def make_histogram(df):
     
     print(ranges_df)
 
+    spec_df = pd.DataFrame({
+        "N": [N_df],
+        "min": [min_df],
+        "max": [max_df],
+        "raiz(n)": [raiz_N_df],
+        "sturges(n)": [sturges_N_df],
+        "class": [num_class],
+        "C raiz(n)": [C_raiz_N],
+        "C sturges(n)": [C_sturges_N],
+        "C": [C_df],
+    })
+
     param_df = pd.DataFrame({
+        "TOTAL": N_df,
         "media ponderada": [media_ponderada],
         "media simples": [media_simples],
         "var": [var],
@@ -118,6 +133,27 @@ def make_histogram(df):
     })
 
     print(param_df)
+
+    print(pd.concat([spec_df, ranges_df, param_df], axis=1))
+
+    # Criando o histograma
+    plt.hist(df["C03 - VIDRO 600ML RET"], bins=num_class, edgecolor='black')
+
+    # Adicionando rótulos e título
+    plt.xlabel('Preço ($)')
+    plt.ylabel('Frequência')
+    plt.title('Histograma dos Preços das Bebidas')
+
+    # Exibindo o gráfico
+    plt.show()
+
+    plt.figure(figsize=(10, 6))
+    plt.boxplot(df["C03 - VIDRO 600ML RET"])
+    plt.title('Boxplot dos Preços das Bebidas')
+    plt.ylabel('Preço ($)')
+    plt.xticks([1], ['Bebidas'])
+    plt.grid(True)
+    plt.show()
 
 
 
