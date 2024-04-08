@@ -16,7 +16,7 @@ def make_histogram(df):
     C_df = round(C_df + C_df * 0.1, 2)
     num_class = int(round(num_class, 0))
 
-    ranges_df = dict([((min_df + C_df * i, min_df + C_df * (i + 1)), 0) for i in range(num_class)])
+    ranges_df = dict([((round(min_df + C_df * i, 2), round(min_df + C_df * (i + 1), 2)), 0) for i in range(num_class)])
 
     for value in df["C03 - VIDRO 600ML RET"].values:
         for k in ranges_df.keys():
@@ -62,6 +62,64 @@ def make_histogram(df):
     print(" TOTAL           |", acc)
     print()
     print()
+
+    data = {
+        "k": [],
+        "CLASSES": [],
+        "Freq": [],
+        "pi": [],
+        "Pi": [],
+        "Xi": [],
+        "Xi*pi": [],
+        "di^2*pi": [],
+    }
+
+    pi_acc = 0
+    for i, k in enumerate(ranges_df.keys()):
+        data["k"].append(i + 1)
+        data["CLASSES"].append(k)
+        data["Freq"].append(ranges_df[k])
+        pi = ranges_df[k]/N_df
+        pi_acc += pi
+        data["pi"].append(round(pi, 2))
+        data["Pi"].append(pi_acc)
+        Xi = (k[0] + k[1]) / 2
+        data["Xi"].append(Xi)
+        data["Xi*pi"].append(pi * Xi)
+
+    media_ponderada = sum(data["Xi*pi"])
+    media_simples = df["C03 - VIDRO 600ML RET"].sum() / N_df
+
+    for i, k in enumerate(ranges_df.keys()):
+        data["di^2*pi"].append((data["Xi"][i] - media_ponderada)**2 * data["pi"][i])
+    
+    var = sum(data["di^2*pi"])
+    desvpad = math.sqrt(var)
+
+    erro_relativo_grupo = 100.0 * abs(media_simples - media_ponderada) / media_simples
+    cv = desvpad / media_ponderada
+
+    ranges_df = pd.DataFrame(data)
+
+    moda = ranges_df['Xi'][ranges_df['Freq'].idxmax()]
+    assimetria = (media_ponderada - moda) / desvpad
+    
+    print(ranges_df)
+
+    param_df = pd.DataFrame({
+        "media ponderada": [media_ponderada],
+        "media simples": [media_simples],
+        "var": [var],
+        "desvpad": [desvpad],
+        "erro relativo grupo": [erro_relativo_grupo],
+        "CV": [cv],
+        "moda": [moda],
+        "assimetria": [assimetria],
+    })
+
+    print(param_df)
+
+
 
 file_path = './doc/BASE DADOS_DESAFIO INDIVIDUAL.xlsx'
 df = pd.read_excel(file_path)
