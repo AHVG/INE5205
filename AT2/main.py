@@ -4,6 +4,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from abc import ABC, abstractmethod
+from ydata_profiling import ProfileReport
+
 
 class Grouping:
     def __init__(self, lower, upper):
@@ -89,6 +91,8 @@ class BaseStatsCalculator(ABC):
         self.assimetria = (self.weighted_average - self.moda) / self.desvpad
 
         self.descriptive_measures = pd.DataFrame({
+            "Media simples": [self.simple_average],
+            "Media ponderada": [self.weighted_average],
             "var": [self.var],
             "desvpad": [self.desvpad],
             "erro relativo agrupamento": [self.erro_relativo_agrupamento],
@@ -183,11 +187,14 @@ def main():
     antarctica_pilsen = filter_excel(dataframe, filter_2)
 
     print(SturgesCalculator(amstel_lager, "C03 - VIDRO 600ML RET"))
-    print(SturgesCalculator(antarctica_pilsen, "C03 - VIDRO 600ML RET"))
+    # print(SturgesCalculator(antarctica_pilsen, "C03 - VIDRO 600ML RET"))
 
-    make_boxplot([amstel_lager, antarctica_pilsen])
-    make_histogram([amstel_lager, antarctica_pilsen])
+    # make_boxplot([amstel_lager, antarctica_pilsen])
+    # make_histogram([amstel_lager, antarctica_pilsen])
 
     plt.show()
+
+    profile = ProfileReport(amstel_lager, title="Pandas Profiling Report", config_file='profiler_settings.yml')
+    profile.to_file("your_report.html")
 
 main()

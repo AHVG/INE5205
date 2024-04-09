@@ -1,0 +1,4 @@
+plot:
+    histogram:
+        bins: 8
+        bayesian_blocks_bins: yes
