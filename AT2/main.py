@@ -5,13 +5,6 @@ import matplotlib.pyplot as plt
 
 from abc import ABC, abstractmethod
 
-
-def filter_excel(df, product, packaging, seg, brand):
-    return df[(df['Marca'] == brand) &
-              (df[packaging].notna()) &
-              (df["Seg"] == seg) &
-              (df["Produto"] == product)]
-
 class Grouping:
     def __init__(self, lower, upper):
         self.lower = lower
@@ -137,15 +130,34 @@ def make_histogram(df):
     plt.show()
 
 def main():
+
     parser = argparse.ArgumentParser(description="Lê um arquivo Excel e imprime na tela.")
     parser.add_argument("--excel_path", help="Caminho do arquivo Excel para ser lido.", default="./doc/BASE DADOS_DESAFIO INDIVIDUAL.xlsx")
     args = parser.parse_args()
 
-    excel_path = args.excel_path
-    df = pd.read_excel(excel_path)
+    def filter_excel(df, filters):
+        all_filter = pd.Series([True] * len(df), index=df.index)
 
-    amstel_lager = filter_excel(df, "CERVEJA", "C03 - VIDRO 600ML RET", 2, "AMSTEL LAGER")
-    antarctica_pilsen = filter_excel(df, "CERVEJA", "C03 - VIDRO 600ML RET", 2, "ANTARCTICA PILSEN")
+        for filter in filters:
+            all_filter &= filter(df)
+
+        return df[all_filter]
+
+    excel_path = args.excel_path
+    dataframe = pd.read_excel(excel_path)
+
+    filter_1 = [lambda df: df['Marca'] == "AMSTEL LAGER",
+                lambda df: df["C03 - VIDRO 600ML RET"].notna(),
+                lambda df: df["Seg"] == 2,
+                lambda df: df["Produto"] == "CERVEJA"]
+    
+    filter_2 = [lambda df: df['Marca'] == "ANTARCTICA PILSEN",
+                lambda df: df["C03 - VIDRO 600ML RET"].notna(),
+                lambda df: df["Seg"] == 2,
+                lambda df: df["Produto"] == "CERVEJA"]
+
+    amstel_lager = filter_excel(dataframe, filter_1)
+    antarctica_pilsen = filter_excel(dataframe, filter_2)
 
     make_histogram(amstel_lager)
     make_histogram(antarctica_pilsen)
