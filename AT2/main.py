@@ -1,103 +1,128 @@
-import pandas as pd
 import math
+import argparse
+import pandas as pd
 import matplotlib.pyplot as plt
 
+from abc import ABC, abstractmethod
+
+
+def filter_excel(df, product, packaging, seg, brand):
+    return df[(df['Marca'] == brand) &
+              (df[packaging].notna()) &
+              (df["Seg"] == seg) &
+              (df["Produto"] == product)]
+
+class Grouping:
+    def __init__(self, lower, upper):
+        self.lower = lower
+        self.upper = upper
+
+    def midpoint(self):
+        return (self.lower + self.upper) / 2.0
+
+    def __contains__(self, item):
+        return self.lower <= item < self.upper
+
+    def __repr__(self):
+        return f"{self.lower:5.2f} |- {self.upper:5.2f}"
+    
+
+class BaseStatsCalculator(ABC):
+    def __init__(self, df, column_name):
+        self.df = df
+        self.column_name = column_name
+
+        self.N = len(df)
+        self.min = df[column_name].min()
+        self.max = df[column_name].max()
+        self.R = self.max - self.min
+
+        self.calculate_num_class()
+        self.C = round((self.R / self.num_class) * 1.1, 2)
+
+        self.spec = pd.DataFrame({
+            "N": [self.N],
+            "min": [self.min],
+            "max": [self.max],
+            "R": [self.R],
+            "num classes": [self.num_class],
+            "C": [self.C],
+        })
+
+        self.model = {
+            "k": [],
+            "CLASSES": [],
+            "Freq": [],
+            "pi": [],
+            "Pi": [],
+            "Xi": [],
+            "Xi*pi": [],
+            "di^2*pi": [],
+        }
+
+        Pi = 0
+
+        for i in range(self.num_class):
+            k = i + 1
+            classe = Grouping(self.min + self.C * i, self.min + self.C * (i + 1))
+            freq = len([value for value in self.df[self.column_name] if value in classe])
+            pi = freq / self.N
+            Pi += pi
+            Xi = classe.midpoint()
+            Xi_pi = pi * Xi
+            di_2_pi = 0
+
+            self.model["k"].append(k)
+            self.model["CLASSES"].append(classe)
+            self.model["Freq"].append(freq)
+            self.model["pi"].append(pi)
+            self.model["Pi"].append(Pi)
+            self.model["Xi"].append(Xi)
+            self.model["Xi*pi"].append(Xi_pi)
+        
+        self.weighted_average = sum(self.model["Xi*pi"])
+        self.simple_average = self.df[self.column_name].mean()
+
+        for i in range(self.num_class):
+            di_2_pi = (self.model["Xi"][i] - self.weighted_average)**2 * self.model["pi"][i]
+            self.model["di^2*pi"].append(di_2_pi)
+
+        self.model = pd.DataFrame(self.model)
+
+        self.var = sum(self.model["di^2*pi"])
+        self.desvpad = math.sqrt(self.var)
+        self.erro_relativo_agrupamento = 100.0 * abs(self.simple_average - self.weighted_average) / self.simple_average
+        self.cv = self.desvpad / self.weighted_average
+        self.moda = self.model['Xi'][self.model['Freq'].idxmax()]
+        self.assimetria = (self.weighted_average - self.moda) / self.desvpad
+
+        self.descriptive_measures = pd.DataFrame({
+            "var": [self.var],
+            "desvpad": [self.desvpad],
+            "erro relativo agrupamento": [self.erro_relativo_agrupamento],
+            "cv": [self.cv],
+            "moda": [self.moda],
+            "assimetria": [self.assimetria],
+        })
+
+    @abstractmethod
+    def calculate_num_class(self):
+        pass
+
+class RaizNCalculator(BaseStatsCalculator):
+    def calculate_num_class(self):
+        self.num_class = int(round(math.sqrt(self.N), 0))
+
+class SturgesCalculator(BaseStatsCalculator):
+    def calculate_num_class(self):
+        self.num_class = int(round(1 + 3.32 * math.log10(self.N), 0))
 
 def make_histogram(df):
-    N_df = len(df)
-    min_df = df["C03 - VIDRO 600ML RET"].min()
-    max_df = df["C03 - VIDRO 600ML RET"].max()
-    R_df = df["C03 - VIDRO 600ML RET"].max() - df["C03 - VIDRO 600ML RET"].min()
-    raiz_N_df = math.sqrt(N_df)
-    sturges_N_df = 1 + 3.32 * math.log10(N_df)
+    infos = SturgesCalculator(df, "C03 - VIDRO 600ML RET")
 
-    C_raiz_N = R_df / raiz_N_df
-    C_sturges_N = R_df / sturges_N_df
+    print(pd.concat([infos.spec, infos.model, infos.descriptive_measures], axis=1))
 
-    C_df, num_class = ((C_raiz_N, raiz_N_df) if C_raiz_N > C_sturges_N else (C_sturges_N, sturges_N_df))
-    C_df = round(C_df + C_df * 0.1, 2)
-    num_class = int(round(num_class, 0))
-
-    ranges_df = dict([((round(min_df + C_df * i, 2), round(min_df + C_df * (i + 1), 2)), 0) for i in range(num_class)])
-
-    for value in df["C03 - VIDRO 600ML RET"].values:
-        for k in ranges_df.keys():
-            if k[0] <= value < k[1]:
-                ranges_df[k] += 1
-                break
-
-    data = {
-        "k": [],
-        "CLASSES": [],
-        "Freq": [],
-        "pi": [],
-        "Pi": [],
-        "Xi": [],
-        "Xi*pi": [],
-        "di^2*pi": [],
-    }
-
-    pi_acc = 0
-    for i, k in enumerate(ranges_df.keys()):
-        data["k"].append(i + 1)
-        data["CLASSES"].append(k)
-        data["Freq"].append(ranges_df[k])
-        pi = ranges_df[k]/N_df
-        pi_acc += pi
-        data["pi"].append(round(pi, 2))
-        data["Pi"].append(pi_acc)
-        Xi = (k[0] + k[1]) / 2
-        data["Xi"].append(Xi)
-        data["Xi*pi"].append(pi * Xi)
-
-    media_ponderada = sum(data["Xi*pi"])
-    media_simples = df["C03 - VIDRO 600ML RET"].sum() / N_df
-
-    for i, k in enumerate(ranges_df.keys()):
-        data["di^2*pi"].append((data["Xi"][i] - media_ponderada)**2 * data["pi"][i])
-    
-    var = sum(data["di^2*pi"])
-    desvpad = math.sqrt(var)
-
-    erro_relativo_grupo = 100.0 * abs(media_simples - media_ponderada) / media_simples
-    cv = desvpad / media_ponderada
-
-    ranges_df = pd.DataFrame(data)
-
-    moda = ranges_df['Xi'][ranges_df['Freq'].idxmax()]
-    assimetria = (media_ponderada - moda) / desvpad
-    
-    print(ranges_df)
-
-    spec_df = pd.DataFrame({
-        "N": [N_df],
-        "min": [min_df],
-        "max": [max_df],
-        "raiz(n)": [raiz_N_df],
-        "sturges(n)": [sturges_N_df],
-        "class": [num_class],
-        "C raiz(n)": [C_raiz_N],
-        "C sturges(n)": [C_sturges_N],
-        "C": [C_df],
-    })
-
-    param_df = pd.DataFrame({
-        "TOTAL": N_df,
-        "media ponderada": [media_ponderada],
-        "media simples": [media_simples],
-        "var": [var],
-        "desvpad": [desvpad],
-        "erro relativo grupo": [erro_relativo_grupo],
-        "CV": [cv],
-        "moda": [moda],
-        "assimetria": [assimetria],
-    })
-
-    print(param_df)
-
-    print(pd.concat([spec_df, ranges_df, param_df], axis=1))
-
-    plt.hist(df["C03 - VIDRO 600ML RET"], bins=num_class, edgecolor='black')
+    plt.hist(df["C03 - VIDRO 600ML RET"], bins=infos.num_class, edgecolor='black')
     plt.xlabel('Preço ($)')
     plt.ylabel('Frequência')
     plt.title('Histograma dos Preços das Bebidas')
@@ -111,20 +136,18 @@ def make_histogram(df):
     plt.text(x=1, y=df["C03 - VIDRO 600ML RET"].max(), s='Xn', ha='center', va='bottom')
     plt.show()
 
+def main():
+    parser = argparse.ArgumentParser(description="Lê um arquivo Excel e imprime na tela.")
+    parser.add_argument("--excel_path", help="Caminho do arquivo Excel para ser lido.", default="./doc/BASE DADOS_DESAFIO INDIVIDUAL.xlsx")
+    args = parser.parse_args()
 
+    excel_path = args.excel_path
+    df = pd.read_excel(excel_path)
 
-file_path = './doc/BASE DADOS_DESAFIO INDIVIDUAL.xlsx'
-df = pd.read_excel(file_path)
+    amstel_lager = filter_excel(df, "CERVEJA", "C03 - VIDRO 600ML RET", 2, "AMSTEL LAGER")
+    antarctica_pilsen = filter_excel(df, "CERVEJA", "C03 - VIDRO 600ML RET", 2, "ANTARCTICA PILSEN")
 
-amstel_lager = df[(df['Marca'] == "AMSTEL LAGER") &
-                  (df["C03 - VIDRO 600ML RET"].notna()) &
-                  (df["Seg"] == 2) &
-                  (df["Produto"] == "CERVEJA")]
+    make_histogram(amstel_lager)
+    make_histogram(antarctica_pilsen)
 
-antarctica_pilsen = df[(df['Marca'] == "ANTARCTICA PILSEN") &
-                       (df["C03 - VIDRO 600ML RET"].notna()) &
-                       (df["Seg"] == 2) &
-                       (df["Produto"] == "CERVEJA")]
-
-make_histogram(amstel_lager)
-make_histogram(antarctica_pilsen)
+main()
