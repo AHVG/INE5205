@@ -18,7 +18,6 @@ class Grouping:
 
     def __repr__(self):
         return f"{self.lower:5.2f} |- {self.upper:5.2f}"
-    
 
 class BaseStatsCalculator(ABC):
     def __init__(self, df, column_name):
@@ -98,35 +97,59 @@ class BaseStatsCalculator(ABC):
             "assimetria": [self.assimetria],
         })
 
+    def __repr__(self) -> str:
+        return str(pd.concat([self.spec, self.model, self.descriptive_measures], axis=1))
+
     @abstractmethod
     def calculate_num_class(self):
         pass
 
 class RaizNCalculator(BaseStatsCalculator):
     def calculate_num_class(self):
-        self.num_class = int(round(math.sqrt(self.N), 0))
+        self.num_class = math.ceil(math.sqrt(self.N))
 
 class SturgesCalculator(BaseStatsCalculator):
     def calculate_num_class(self):
-        self.num_class = int(round(1 + 3.32 * math.log10(self.N), 0))
+        self.num_class = math.ceil(1 + 3.32 * math.log10(self.N))
 
-def make_histogram(df):
-    infos = SturgesCalculator(df, "C03 - VIDRO 600ML RET")
 
-    print(pd.concat([infos.spec, infos.model, infos.descriptive_measures], axis=1))
+def make_histogram(dataframes):
+    plt.figure(figsize=(10, 6))
 
-    plt.hist(df["C03 - VIDRO 600ML RET"], bins=infos.num_class, edgecolor='black')
-    plt.xlabel('Preço ($)')
+    for df in dataframes:
+        plt.hist(df["C03 - VIDRO 600ML RET"], bins='sturges', alpha=0.5, label=df["Marca"].iloc[0])
+
+    plt.legend()
+    plt.title('Histogramas Comparativos')
+    plt.xlabel('Valor')
     plt.ylabel('Frequência')
-    plt.title('Histograma dos Preços das Bebidas')
+
     plt.show()
 
-    df["C03 - VIDRO 600ML RET"].plot(kind='box')
-    plt.text(x=1, y=df["C03 - VIDRO 600ML RET"].min(), s='X1', ha='center', va='top')
-    plt.text(x=1, y=df["C03 - VIDRO 600ML RET"].quantile(0.25), s='Q1', ha='center', va='center')
-    plt.text(x=1, y=df["C03 - VIDRO 600ML RET"].median(), s='Q2', ha='center', va='center')
-    plt.text(x=1, y=df["C03 - VIDRO 600ML RET"].quantile(0.75), s='Q3', ha='center', va='center')
-    plt.text(x=1, y=df["C03 - VIDRO 600ML RET"].max(), s='Xn', ha='center', va='bottom')
+
+def make_boxplot(dataframes):
+    plt.figure(figsize=(8, 6))
+
+    boxplot_elements = plt.boxplot([dataframe["C03 - VIDRO 600ML RET"] for dataframe in dataframes],
+                labels=[dataframe["Marca"].iloc[0] for dataframe in dataframes])
+
+    for i, box in enumerate(boxplot_elements['boxes']):
+        y_min = boxplot_elements['caps'][2*i].get_ydata()[0]
+        y_max = boxplot_elements['caps'][2*i + 1].get_ydata()[0]
+        y_q1 = box.get_ydata()[1]
+        y_q3 = box.get_ydata()[2]
+        y_med = boxplot_elements['medians'][i].get_ydata()[1]
+        x_pos = box.get_xdata()[0]
+        
+        plt.text(x_pos, y_min, f'{y_min:.2f}', verticalalignment='top', fontsize=8, color='red')
+        plt.text(x_pos, y_max, f'{y_max:.2f}', verticalalignment='bottom', fontsize=8, color='red')
+        plt.text(x_pos, y_q1, f'{y_q1:.2f}', verticalalignment='top', fontsize=8, color='red')
+        plt.text(x_pos, y_q3, f'{y_q3:.2f}', verticalalignment='bottom', fontsize=8, color='red')
+        plt.text(x_pos, y_med, f'{y_med:.2f}', verticalalignment='center', fontsize=8, color='red')
+
+    plt.title('Análise exploratória - boxplot')
+    plt.xlabel('Marca')
+    plt.ylabel('Valor da cerveja (R$)')
     plt.show()
 
 def main():
@@ -159,7 +182,12 @@ def main():
     amstel_lager = filter_excel(dataframe, filter_1)
     antarctica_pilsen = filter_excel(dataframe, filter_2)
 
-    make_histogram(amstel_lager)
-    make_histogram(antarctica_pilsen)
+    print(SturgesCalculator(amstel_lager, "C03 - VIDRO 600ML RET"))
+    print(SturgesCalculator(antarctica_pilsen, "C03 - VIDRO 600ML RET"))
+
+    make_boxplot([amstel_lager, antarctica_pilsen])
+    make_histogram([amstel_lager, antarctica_pilsen])
+
+    plt.show()
 
 main()
