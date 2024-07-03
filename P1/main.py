@@ -32,7 +32,10 @@ class BaseStatsCalculator(ABC):
         self.R = self.max - self.min
 
         self.calculate_num_class()
-        self.C = round((self.R / self.num_class) * 1.1, 2)
+        self.num_class = 1 + 3.32 * math.log10(self.N)
+        self.C = round(self.R / self.num_class, 2)
+
+        self.num_class = int(round(self.num_class, 0))
 
         self.spec = pd.DataFrame({
             "N": [self.N],
@@ -120,11 +123,11 @@ class SturgesCalculator(BaseStatsCalculator):
         self.num_class = math.ceil(1 + 3.32 * math.log10(self.N))
 
 
-def make_histogram(dataframes):
+def make_histogram(dataframes, column):
     plt.figure(figsize=(10, 6))
 
     for df in dataframes:
-        plt.hist(df["C03 - VIDRO 600ML RET"], bins='sturges', alpha=0.5, label=df["Marca"].iloc[0])
+        plt.hist(df[column], bins='sturges', alpha=0.5, label=df["Marca"].iloc[0])
 
     plt.legend()
     plt.title('Histogramas Comparativos')
@@ -134,11 +137,11 @@ def make_histogram(dataframes):
     plt.show()
 
 
-def make_boxplot(dataframes):
+def make_boxplot(dataframes, column):
     plt.figure(figsize=(8, 6))
 
-    boxplot_elements = plt.boxplot([dataframe["C03 - VIDRO 600ML RET"] for dataframe in dataframes],
-                labels=[dataframe["Marca"].iloc[0] for dataframe in dataframes])
+    boxplot_elements = plt.boxplot([dataframe[column] for dataframe in dataframes],
+                labels=["REGIOES"])
 
     for i, box in enumerate(boxplot_elements['boxes']):
         y_min = boxplot_elements['caps'][2*i].get_ydata()[0]
@@ -173,30 +176,34 @@ def main():
 
         return df[all_filter]
 
-    excel_path = args.excel_path
-    dataframe = pd.read_excel(excel_path)
+    # excel_path = args.excel_path
+    # dataframe = pd.read_excel(excel_path)
 
-    filter_1 = [lambda df: df['Marca'] == "AMSTEL LAGER",
-                lambda df: df["C03 - VIDRO 600ML RET"].notna(),
-                lambda df: df["Seg"] == 2,
-                lambda df: df["Produto"] == "CERVEJA"]
+    # filter_1 = [lambda df: df['Marca'] == "AMSTEL LAGER",
+    #             lambda df: df["C03 - VIDRO 600ML RET"].notna(),
+    #             lambda df: df["Seg"] == 2,
+    #             lambda df: df["Produto"] == "CERVEJA"]
     
-    filter_2 = [lambda df: df['Marca'] == "ANTARCTICA PILSEN",
-                lambda df: df["C03 - VIDRO 600ML RET"].notna(),
-                lambda df: df["Seg"] == 2,
-                lambda df: df["Produto"] == "CERVEJA"]
+    # filter_2 = [lambda df: df['Marca'] == "ANTARCTICA PILSEN",
+    #             lambda df: df["C03 - VIDRO 600ML RET"].notna(),
+    #             lambda df: df["Seg"] == 2,
+    #             lambda df: df["Produto"] == "CERVEJA"]
 
-    amstel_lager = filter_excel(dataframe, filter_1)
-    antarctica_pilsen = filter_excel(dataframe, filter_2)
+    # amstel_lager = filter_excel(dataframe, filter_1)
+    # antarctica_pilsen = filter_excel(dataframe, filter_2)
 
-    amstel = SturgesCalculator(amstel_lager, "C03 - VIDRO 600ML RET")
-    antarctica = SturgesCalculator(antarctica_pilsen, "C03 - VIDRO 600ML RET")
+    gasolina = pd.DataFrame([6.32, 5.3, 6.29, 5.48, 5.62, 6.18, 5.95, 5.95,
+                             5.72, 5.64, 5.63, 5.38,
+                             5.72, 5.49, 5.62, 5.51,
+                             5.72, 5.82, 5.92, 5.59, 5.68, 5.58, 5.78, 5.8,
+                             5.72, 5.89, 5.78], columns=["GASOLINA"])
+    dados = RaizNCalculator(gasolina, "GASOLINA")
 
-    amstel.to_csv("amstel.csv")
-    antarctica.to_csv("antarctica.csv")
+    print(dados)
+    dados.to_csv("teste.csv")
 
-    make_boxplot([amstel_lager, antarctica_pilsen])
-    make_histogram([amstel_lager, antarctica_pilsen])
+    # make_histogram(gasolina, "GASOLINA")
+    make_boxplot([gasolina], "GASOLINA")
 
     plt.show()
 
