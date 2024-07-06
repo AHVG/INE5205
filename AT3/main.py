@@ -145,6 +145,7 @@ def main():
     sturges = sturges_formula(n)
     root = square_root(n)
     number_of_class = sturges
+    df = number_of_class - 2 - 1
 
     print(f"Número de dados {n}")
     print(f"Número de classes Sturges {sturges}")
@@ -153,12 +154,12 @@ def main():
     print()
 
     col = "C03 - VIDRO 600ML RET"
-    prices = amstel_lager[col]
+    prices = np.log(amstel_lager[col])
 
     minimum = prices.min()
     maximum = prices.max()
     r = maximum - minimum
-    c =  round(r / number_of_class, 2)
+    c =  round(r / number_of_class, 4)
     mean = prices.mean()
     median = prices.median()
     variance_value = prices.var()
@@ -233,8 +234,15 @@ def main():
     # plt.show()
 
     chi2, p = stats.chisquare(adjust_freqs, f_exp=es)
+    chi2_critical_log = stats.chi2.ppf(0.95, df)
     print(chi2)
     print(p)
+    print(chi2_critical_log)
+
+    if chi2 > chi2_critical_log:
+        print("Rejeitamos H0: Os dados não seguem uma distribuição normal.")
+    else:
+        print("Não rejeitamos H0: Os dados seguem uma distribuição normal.")
 
     # import numpy as np
     # import scipy.stats as stats
@@ -243,7 +251,7 @@ def main():
     # data = np.random.lognormal(mean=0, sigma=1, size=100)  # Exemplo de dados log-normal
 
     # # Aplique a transformação logarítmica aos dados
-    # log_data = np.log(data)
+    # log_data = np.log(prices)
 
     # # Teste de Shapiro-Wilk para verificar a normalidade dos dados transformados
     # shapiro_test = stats.shapiro(log_data)
@@ -251,7 +259,7 @@ def main():
 
     # # Teste de Kolmogorov-Smirnov para a distribuição log-normal
     # mean, sigma = np.mean(log_data), np.std(log_data, ddof=1)
-    # ks_test = stats.kstest(data, 'lognorm', args=(sigma, 0, np.exp(mean)))
+    # ks_test = stats.kstest(prices, 'lognorm', args=(sigma, 0, np.exp(mean)))
     # print(f"Kolmogorov-Smirnov Test: Estatística = {ks_test.statistic}, p-valor = {ks_test.pvalue}")
 
 
