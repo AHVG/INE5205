@@ -1,7 +1,3 @@
-# https://www.geeksforgeeks.org/box-plot-in-python-using-matplotlib/
-# https://medium.com/20-21/boxplot-com-python-usando-matplotlib-e-seaborn-be42cea47a6c
-# https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.boxplot.html
-
 import math
 import argparse
 
@@ -9,8 +5,6 @@ import numpy as np
 import pandas as pd
 import scipy.stats as stats
 import matplotlib.pyplot as plt
-
-from scipy.stats import shapiro
 
 
 def sturges_formula(n):
@@ -299,36 +293,13 @@ def main():
 
     col = "C03 - VIDRO 600ML RET"
 
-    prices = amstel_lager[col]
-    part_2(prices)
+    amstel_lager_prices = amstel_lager[col]
+    antarctica_pilsen_prices = antarctica_pilsen[col]
 
-    prices = antarctica_pilsen[col]    
-    part_2(prices)
+    part_2(amstel_lager_prices)
+    part_2(antarctica_pilsen_prices)
 
-    # ks_stat, ks_p_value = stats.kstest(prices, 'norm', args=(np.mean(prices), np.std(prices)))
-    # print('Kolmogorov-Smirnov Teste: Estatística = %.3f, Valor-p = %.3f' % (ks_stat, ks_p_value))
-
-    # # Teste de Anderson-Darling
-    # ad_stat, _, _ = stats.anderson(prices, dist='norm')
-    # print('Anderson-Darling Teste: Estatística = %.3f' % ad_stat)
-
-    # # Teste de Jarque-Bera
-    # jb_stat, jb_p_value = stats.jarque_bera(prices)
-    # print('Jarque-Bera Teste: Estatística = %.3f, Valor-p = %.3f' % (jb_stat, jb_p_value))
-
-    # # Construindo os histogramas
-    # # Colocar os dois histogramas juntos com ...subplots(1, 2, ...
-    # fig, axs = plt.subplots(1, 1, figsize=(14, 7), sharey=True)
-
-    # # Histograma para df1
-    # axs.hist(prices, bins=number_of_class, edgecolor='black')
-    # axs.set_title(f'Histograma de Preços ({n} Observações)')
-    # axs.set_xlabel('Preços')
-    # axs.set_ylabel('Frequência')
-
-    # # plt.tight_layout()
-    # plt.show()
-
+    # https://ovictorviana.medium.com/teste-de-hip%C3%B3tese-com-python-ba5d751f156c
 
 if __name__ == "__main__":
     main()
