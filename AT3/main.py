@@ -10,6 +10,8 @@ import pandas as pd
 import scipy.stats as stats
 import matplotlib.pyplot as plt
 
+from scipy.stats import shapiro
+
 
 def sturges_formula(n):
     return 1 + 3.322 * math.log(n, 10)
@@ -50,7 +52,7 @@ def calculate_descriptive_model(data):
     minimum = data.min()
     maximum = data.max()
     r = maximum - minimum
-    c =  round(r / number_of_class, 4)
+    c =  round(r / number_of_class, 4) * 1.05
     mean = data.mean()
     median = data.median()
     variance_value = data.var()
@@ -67,7 +69,7 @@ def calculate_descriptive_model(data):
 
     print("MODELO DESCRITIVO " + "="*220)
     print()
-    print(f"Número de dados")
+    print(f"Número de dados {n}")
     print(f"Número de classes sturgues {sturges}")
     print(f"Número de classes raiz {root}")
     print(f"Número de classes escolhido {number_of_class}")
@@ -128,7 +130,7 @@ def calculate_es(p_z1s_z2s, n):
 def calculate_qui_squares(freqs, es):
     return [(freq - e)**2 / e for freq, e in zip(freqs, es)]
 
-def adjust(intervals, freqs, es, error=0.05):
+def adjust(intervals, freqs, es, error=5.0):
     adjust_intervals = []
     adjust_freqs = []
     adjust_es = []
@@ -217,6 +219,54 @@ def chi_square(n, number_of_class, class_intervals, mean, std_deviation_value, f
 
     return qui_squares, chi2_critical
 
+def part_2(data):
+    model = calculate_descriptive_model(data)
+    n = model["numero de dados"]
+    number_of_class = model["numero de classes"]
+    class_intervals = model["intervalos"]
+    freqs = model["freqs"]
+    mean = model["media"]
+    std_deviation_value = model["desvio padrao"]
+
+    chi_square_value, chi_critical = chi_square(n, number_of_class, class_intervals, mean, std_deviation_value, freqs)
+
+    # Histograma dos dados transformados
+    plt.hist(data, bins='auto', alpha=0.7, rwidth=0.85)
+    plt.title('Histograma dos Dados Transformados')
+    plt.xlabel('Valor')
+    plt.ylabel('Frequência')
+    plt.show()
+
+    # Q-Q Plot
+    stats.probplot(data, dist="norm", plot=plt)
+    plt.title('Q-Q Plot dos Dados Transformados')
+    plt.show()
+
+    print("\nLOG NORMAL\n")
+    data = np.log(data)
+    
+    model = calculate_descriptive_model(data)
+    n = model["numero de dados"]
+    number_of_class = model["numero de classes"]
+    class_intervals = model["intervalos"]
+    freqs = model["freqs"]
+    mean = model["media"]
+    std_deviation_value = model["desvio padrao"]
+
+    # Histograma dos dados transformados
+    plt.hist(data, bins='auto', alpha=0.7, rwidth=0.85)
+    plt.title('Histograma dos Dados Transformados')
+    plt.xlabel('Valor')
+    plt.ylabel('Frequência')
+    plt.show()
+
+    # Q-Q Plot
+    stats.probplot(data, dist="norm", plot=plt)
+    plt.title('Q-Q Plot dos Dados Transformados')
+    plt.show()
+
+    chi_square_value, chi_critical = chi_square(n, number_of_class, class_intervals, mean, std_deviation_value, freqs)
+
 def main():
 
     parser = argparse.ArgumentParser(description="Lê um arquivo Excel e imprime na tela.")
@@ -239,30 +289,32 @@ def main():
                 lambda df: df["Seg"] == 2,
                 lambda df: df["Produto"] == "CERVEJA"]
 
-    # filter_1 = [lambda df: df['Marca'] == "ANTARCTICA PILSEN",
-    #             lambda df: df["C03 - VIDRO 600ML RET"].notna(),
-    #             lambda df: df["Seg"] == 2,
-    #             lambda df: df["Produto"] == "CERVEJA"]
+    filter_2 = [lambda df: df['Marca'] == "ANTARCTICA PILSEN",
+                lambda df: df["C03 - VIDRO 600ML RET"].notna(),
+                lambda df: df["Seg"] == 2,
+                lambda df: df["Produto"] == "CERVEJA"]
 
     amstel_lager = filter_excel(dataframe, filter_1)
-
-    print("Tabela só com os dados do Amstel Lager")
-    print(amstel_lager)
-    print()
+    antarctica_pilsen = filter_excel(dataframe, filter_2)
 
     col = "C03 - VIDRO 600ML RET"
+
     prices = amstel_lager[col]
-    
-    model = calculate_descriptive_model(prices)
-    n = model["numero de dados"]
-    number_of_class = model["numero de classes"]
-    class_intervals = model["intervalos"]
-    freqs = model["freqs"]
-    mean = model["media"]
-    std_deviation_value = model["desvio padrao"]
+    part_2(prices)
 
-    chi_square_value, chi_critical = chi_square(n, number_of_class, class_intervals, mean, std_deviation_value, freqs)
+    prices = antarctica_pilsen[col]    
+    part_2(prices)
 
+    # ks_stat, ks_p_value = stats.kstest(prices, 'norm', args=(np.mean(prices), np.std(prices)))
+    # print('Kolmogorov-Smirnov Teste: Estatística = %.3f, Valor-p = %.3f' % (ks_stat, ks_p_value))
+
+    # # Teste de Anderson-Darling
+    # ad_stat, _, _ = stats.anderson(prices, dist='norm')
+    # print('Anderson-Darling Teste: Estatística = %.3f' % ad_stat)
+
+    # # Teste de Jarque-Bera
+    # jb_stat, jb_p_value = stats.jarque_bera(prices)
+    # print('Jarque-Bera Teste: Estatística = %.3f, Valor-p = %.3f' % (jb_stat, jb_p_value))
 
     # # Construindo os histogramas
     # # Colocar os dois histogramas juntos com ...subplots(1, 2, ...
