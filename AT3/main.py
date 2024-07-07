@@ -279,6 +279,55 @@ def part_2(data, name):
     chi_square_result = chi_square(n, number_of_class, class_intervals, mean, std_deviation_value, freqs)
     graphs(data)
 
+def part_3(sample1, sample2):
+    # Estatísticas descritivas
+    n1, n2 = len(sample1), len(sample2)
+    mean1, mean2 = np.mean(sample1), np.mean(sample2)
+    var1, var2 = np.var(sample1, ddof=1), np.var(sample2, ddof=1)
+    std1, std2 = np.std(sample1, ddof=1), np.std(sample2, ddof=1)
+
+    # Teste para a razão entre variâncias
+    f_statistic = var1 / var2
+    dfn, dfd = n1 - 1, n2 - 1
+    alpha = 0.05
+    f_critical1 = stats.f.ppf(alpha / 2, dfn, dfd)
+    f_critical2 = stats.f.ppf(1 - alpha / 2, dfn, dfd)
+    reject_var_h0 = f_statistic < f_critical1 or f_statistic > f_critical2
+
+    # Teste para a diferença de médias (assumindo variâncias iguais)
+    pooled_var = ((n1 - 1) * var1 + (n2 - 1) * var2) / (n1 + n2 - 2)
+    t_statistic = (mean1 - mean2) / np.sqrt(pooled_var * (1 / n1 + 1 / n2))
+    df = n1 + n2 - 2
+    t_critical = stats.t.ppf(1 - alpha / 2, df)
+    reject_mean_h0 = abs(t_statistic) > t_critical
+
+    # Construção do intervalo de confiança para a razão entre variâncias
+    ci_var_lower = f_statistic / f_critical2
+    ci_var_upper = f_statistic * f_critical2
+
+    # Construção do intervalo de confiança para a diferença de médias
+    ci_mean_lower = (mean1 - mean2) - t_critical * np.sqrt(pooled_var * (1 / n1 + 1 / n2))
+    ci_mean_upper = (mean1 - mean2) + t_critical * np.sqrt(pooled_var * (1 / n1 + 1 / n2))
+
+    # Resultados
+    results = {
+        'Estatística F': f_statistic,
+        'Valor crítico F (lower)': f_critical1,
+        'Valor crítico F (upper)': f_critical2,
+        'Rejeição H0 variâncias iguais': reject_var_h0,
+        'Estatística t': t_statistic,
+        'Valor crítico t': t_critical,
+        'Rejeição H0 médias iguais': reject_mean_h0,
+        'IC razão variâncias (lower)': ci_var_lower,
+        'IC razão variâncias (upper)': ci_var_upper,
+        'IC diferença médias (lower)': ci_mean_lower,
+        'IC diferença médias (upper)': ci_mean_upper
+    }
+
+    dict2xlsx(results, "datas/estatisticas-parametricas.xlsx")
+
+    return results
+
 def main():
 
     parser = argparse.ArgumentParser(description="Lê um arquivo Excel e imprime na tela.")
@@ -316,6 +365,8 @@ def main():
 
     part_2(amstel_lager_prices, "AMSTEL-LAGER")
     part_2(antarctica_pilsen_prices, "ANTARCTICA-PILSEN")
+
+    part_3(amstel_lager_prices, antarctica_pilsen_prices)
 
     # https://ovictorviana.medium.com/teste-de-hip%C3%B3tese-com-python-ba5d751f156c
 
