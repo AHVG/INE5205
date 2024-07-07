@@ -89,6 +89,7 @@ def calculate_descriptive_model(data):
     print()
 
     return {
+        "dados": data,
         "numero de dados": n,
         "numero de classes": number_of_class,
         "max": maximum,
@@ -100,8 +101,8 @@ def calculate_descriptive_model(data):
         "variancia": variance_value,
         "desvio padrao": std_deviation_value,
         "intervalos": class_intervals,
-        "xis": xis,
         "freqs": freqs,
+        "xis": xis,
         "pis": pis,
         "xis dot pis": xis_dot_pis,
         "idk": idk
@@ -200,20 +201,57 @@ def chi_square(n, number_of_class, class_intervals, mean, std_deviation_value, f
     print("="*237)
     print()
 
-    chi2, p = stats.chisquare(adjust_freqs, f_exp=adjust_es)
-    chi2_critical_log = stats.chi2.ppf(0.95, df)
-    print(chi2)
-    print(p)
-    print(chi2_critical_log)
+    return {
+        "z1s": z1s,
+        "z2s": z2s,
+        "Oi": p_z1s_z2s,
+        "Ei": es,
+        "sum(Oi)": sum(p_z1s_z2s),
+        "sum(Ei)": sum(es),
+        "intervalo ajustado": adjust_intervals,
+        "frequência ajustada": adjust_freqs,
+        "probabilidade ajustada": adjust_es,
+        "qui squares": qui_squares,
+        "qui square": sum(qui_squares),
+        "qui square critico": chi2_critical,
+    }
 
-    if chi2 > chi2_critical_log:
-        print("Rejeitamos H0: Os dados não seguem uma distribuição normal.")
-    else:
-        print("Não rejeitamos H0: Os dados seguem uma distribuição normal.")
+def dict2xlsx(data_dict, name="output.xlsx"):
+    # Preparação do DataFrame
+    # Primeiro, transformar valores únicos em listas do mesmo tamanho
+    max_length = max(len(v) if isinstance(v, list) else 1 for v in data_dict.values())
+    for key, value in data_dict.items():
+        if not isinstance(value, list) and not isinstance(value, tuple):
+            data_dict[key] = [value] + [None] * (max_length-1)
+        else:
+            # Se a lista for menor que o comprimento máximo, completar com None
+            data_dict[key] = list(data_dict[key]) + [None] * (max_length - len(data_dict[key]))
 
-    return qui_squares, chi2_critical
+    # Conversão do dicionário para DataFrame
+    df = pd.DataFrame(data_dict)
 
-def part_2(data):
+    # Salvar o DataFrame em um arquivo Excel
+    df.to_excel(f'{name}', index=False)
+
+def graphs(data):
+    # Criação da figura e subplots
+    fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Histograma
+    axs[0].hist(data, bins='auto', alpha=0.7, rwidth=0.85)
+    axs[0].set_title('Histograma dos Dados Transformados')
+    axs[0].set_xlabel('Valor')
+    axs[0].set_ylabel('Frequência')
+
+    # Q-Q Plot
+    stats.probplot(data, dist="norm", plot=axs[1])
+    axs[1].set_title('Q-Q Plot dos Dados Transformados')
+
+    # Ajuste dos layouts
+    plt.tight_layout()
+    plt.show()
+
+def part_2(data, name):
     model = calculate_descriptive_model(data)
     n = model["numero de dados"]
     number_of_class = model["numero de classes"]
@@ -222,19 +260,10 @@ def part_2(data):
     mean = model["media"]
     std_deviation_value = model["desvio padrao"]
 
-    chi_square_value, chi_critical = chi_square(n, number_of_class, class_intervals, mean, std_deviation_value, freqs)
-
-    # Histograma dos dados transformados
-    plt.hist(data, bins='auto', alpha=0.7, rwidth=0.85)
-    plt.title('Histograma dos Dados Transformados')
-    plt.xlabel('Valor')
-    plt.ylabel('Frequência')
-    plt.show()
-
-    # Q-Q Plot
-    stats.probplot(data, dist="norm", plot=plt)
-    plt.title('Q-Q Plot dos Dados Transformados')
-    plt.show()
+    chi_square_result = chi_square(n, number_of_class, class_intervals, mean, std_deviation_value, freqs)
+    graphs(data)
+    dict2xlsx(model, f"datas/modelo-descritivo-{name}.xlsx")
+    dict2xlsx(chi_square_result, f"datas/teste-aderencia-{name}.xlsx")
 
     print("\nLOG NORMAL\n")
     data = np.log(data)
@@ -247,19 +276,8 @@ def part_2(data):
     mean = model["media"]
     std_deviation_value = model["desvio padrao"]
 
-    # Histograma dos dados transformados
-    plt.hist(data, bins='auto', alpha=0.7, rwidth=0.85)
-    plt.title('Histograma dos Dados Transformados')
-    plt.xlabel('Valor')
-    plt.ylabel('Frequência')
-    plt.show()
-
-    # Q-Q Plot
-    stats.probplot(data, dist="norm", plot=plt)
-    plt.title('Q-Q Plot dos Dados Transformados')
-    plt.show()
-
-    chi_square_value, chi_critical = chi_square(n, number_of_class, class_intervals, mean, std_deviation_value, freqs)
+    chi_square_result = chi_square(n, number_of_class, class_intervals, mean, std_deviation_value, freqs)
+    graphs(data)
 
 def main():
 
@@ -296,8 +314,8 @@ def main():
     amstel_lager_prices = amstel_lager[col]
     antarctica_pilsen_prices = antarctica_pilsen[col]
 
-    part_2(amstel_lager_prices)
-    part_2(antarctica_pilsen_prices)
+    part_2(amstel_lager_prices, "AMSTEL-LAGER")
+    part_2(antarctica_pilsen_prices, "ANTARCTICA-PILSEN")
 
     # https://ovictorviana.medium.com/teste-de-hip%C3%B3tese-com-python-ba5d751f156c
 
