@@ -37,6 +37,15 @@ def calculate_xi_dot_pi(xis, pis):
 def calculate_idk(xis, pis, mean):
     return [(xi - mean)**2 * pi for xi, pi in zip(xis, pis)]
 
+def detect_outliers(data):
+    Q1 = np.percentile(data, 25)
+    Q3 = np.percentile(data, 75)
+    IQR = Q3 - Q1
+    lower_bound = Q1 - 1.5 * IQR
+    upper_bound = Q3 + 1.5 * IQR
+    outliers = data[(data < lower_bound) | (data > upper_bound)]
+    return outliers, lower_bound, upper_bound
+
 def calculate_descriptive_model(data):
     n = len(data)
     sturges = sturges_formula(n)
@@ -60,6 +69,7 @@ def calculate_descriptive_model(data):
     pis = calculate_pis(freqs, n)
     xis_dot_pis = calculate_xi_dot_pi(xis, pis)
     idk = calculate_idk(xis, pis, mean)
+    outliers, lower_bound, upper_bound = detect_outliers(data)
 
     print("MODELO DESCRITIVO " + "="*220)
     print()
@@ -85,6 +95,8 @@ def calculate_descriptive_model(data):
     print(f"Probabilidade de cada intervalo {pis}")
     print(f"Probabilidade x Ponto médio de cada intervalo {xis_dot_pis}")
     print(f"Não faço ideia do que é {idk}")
+    print(f"Limite inferior {lower_bound} e limite superior {upper_bound}")
+    print(f"Outliers detectados: {outliers.tolist()}")
     print("="*238)
     print()
 
@@ -233,23 +245,33 @@ def dict2xlsx(data_dict, name="output.xlsx"):
     # Salvar o DataFrame em um arquivo Excel
     df.to_excel(f'{name}', index=False)
 
-def graphs(data):
+def graphs(data, path=None):
     # Criação da figura e subplots
-    fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+    fig, axs = plt.subplots(1, 3, figsize=(18, 5))
 
     # Histograma
     axs[0].hist(data, bins='auto', alpha=0.7, rwidth=0.85)
-    axs[0].set_title('Histograma dos Dados Transformados')
-    axs[0].set_xlabel('Valor')
-    axs[0].set_ylabel('Frequência')
+    axs[0].set_title('Histograma dos Dados')
+    # axs[0].set_xlabel('Valor')
+    # axs[0].set_ylabel('Frequência')
 
     # Q-Q Plot
     stats.probplot(data, dist="norm", plot=axs[1])
-    axs[1].set_title('Q-Q Plot dos Dados Transformados')
+    axs[1].set_title('Q-Q Plot dos Dados')
+
+    # Boxplot
+    axs[2].boxplot(data, vert=True)
+    axs[2].set_title('Boxplot dos Dados')
+    axs[2].set_xticks([])  # Remove os ticks do eixo y
 
     # Ajuste dos layouts
     plt.tight_layout()
+
+    if path:
+        plt.savefig(path)
+
     plt.show()
+
 
 def part_2(data, name):
     model = calculate_descriptive_model(data)
@@ -261,7 +283,7 @@ def part_2(data, name):
     std_deviation_value = model["desvio padrao"]
 
     chi_square_result = chi_square(n, number_of_class, class_intervals, mean, std_deviation_value, freqs)
-    graphs(data)
+    graphs(data, f"datas/{name}_normal.png")
     dict2xlsx(model, f"datas/modelo-descritivo-{name}.xlsx")
     dict2xlsx(chi_square_result, f"datas/teste-aderencia-{name}.xlsx")
 
@@ -277,7 +299,7 @@ def part_2(data, name):
     std_deviation_value = model["desvio padrao"]
 
     chi_square_result = chi_square(n, number_of_class, class_intervals, mean, std_deviation_value, freqs)
-    graphs(data)
+    graphs(data, f"datas/{name}_lognormal.png")
 
 def part_3(sample1, sample2):
     # Estatísticas descritivas
