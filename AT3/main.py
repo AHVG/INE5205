@@ -34,7 +34,7 @@ def calculate_pis(freqs, n):
 def calculate_xi_dot_pi(xis, pis):
     return [xi * pi for xi, pi in zip(xis, pis)]
 
-def calculate_idk(xis, pis, mean):
+def calculate_qdp(xis, pis, mean):
     return [(xi - mean)**2 * pi for xi, pi in zip(xis, pis)]
 
 def detect_outliers(data):
@@ -55,21 +55,29 @@ def calculate_descriptive_model(data):
     minimum = data.min()
     maximum = data.max()
     r = maximum - minimum
-    c =  round(r / number_of_class, 4) * 1.05
+    c =  round(r / number_of_class, 4)
     mean = data.mean()
     median = data.median()
     variance_value = data.var()
     std_deviation_value = data.std()
+    moda = data.mode()[0]
 
-    class_intervals = get_class_interval(minimum, round(number_of_class), c)
+    class_intervals = get_class_interval(minimum, math.ceil(number_of_class), c)
     xis = calculate_xis(class_intervals)
 
     freqs = calculate_freq(data, class_intervals)
     
     pis = calculate_pis(freqs, n)
+    Pis = [sum(pis[:i + 1]) for i in range(len(pis))]
     xis_dot_pis = calculate_xi_dot_pi(xis, pis)
-    idk = calculate_idk(xis, pis, mean)
+    weighted_average = sum(xis_dot_pis)
+    qdp = calculate_qdp(xis, pis, mean)
     outliers, lower_bound, upper_bound = detect_outliers(data)
+
+    relative_error = abs(mean - weighted_average) / mean
+    CV = std_deviation_value / weighted_average
+    assi = (weighted_average - moda) / std_deviation_value
+    dist = data.skew()
 
     print("MODELO DESCRITIVO " + "="*220)
     print()
@@ -87,14 +95,24 @@ def calculate_descriptive_model(data):
     print(f"Mediana {median}")
     print(f"Variância {variance_value}")
     print(f"Desvio Padrão {std_deviation_value}")
+    print(f"Moda {moda}")
     print()
     print(f"Intervalos da classes {class_intervals}")
     print(f"Ponto médio dos intervalos {xis}")
     print(f"Frequências dos dados {freqs}")
     print(f"Soma das frequências {sum(freqs)}")
     print(f"Probabilidade de cada intervalo {pis}")
+    print(f"Probabilidade de cada intervalo acumulada {Pis}")
     print(f"Probabilidade x Ponto médio de cada intervalo {xis_dot_pis}")
-    print(f"Não faço ideia do que é {idk}")
+    print(f"Média ponderada {weighted_average}")
+    print(f"QDP {qdp}")
+    print(f"Variância sum(qdp) {sum(qdp)}")
+    print(f"Desvio padrão sqrt(sum(qdp)) {math.sqrt(sum(qdp))}")
+    print()
+    print(f"Erro relativo {relative_error}")
+    print(f"CV {CV}")
+    print(f"Assimetria {assi}")
+    print(f"Distorção {dist}")
     print(f"Limite inferior {lower_bound} e limite superior {upper_bound}")
     print(f"Outliers detectados: {outliers.tolist()}")
     print("="*238)
@@ -103,21 +121,30 @@ def calculate_descriptive_model(data):
     return {
         "dados": data,
         "numero de dados": n,
-        "numero de classes": number_of_class,
+        "numero de classes": math.ceil(number_of_class),
         "max": maximum,
         "min": minimum,
         "range": r,
         "c": c,
         "media": mean,
         "mediana": median,
-        "variancia": variance_value,
-        "desvio padrao": std_deviation_value,
+        "var": variance_value,
+        "desvpad": math.sqrt(sum(qdp)),
         "intervalos": class_intervals,
         "freqs": freqs,
-        "xis": xis,
+        "Xis": xis,
         "pis": pis,
-        "xis dot pis": xis_dot_pis,
-        "idk": idk
+        "Pis": Pis,
+        "xis*pis": xis_dot_pis,
+        "media ponderada": weighted_average,
+        "QDP": qdp,
+        "erro relativo": relative_error,
+        "CV": CV,
+        "assimetria": assi,
+        "distorcao": dist,
+        "limite inferior": lower_bound,
+        "limite superior": upper_bound,
+        "outliers": outliers.tolist()
     }
 
 def calculate_zs(intervals, mean, std):
@@ -144,16 +171,17 @@ def adjust(intervals, freqs, es, error=5.0):
 
     i = 0
     acc_intervals = intervals[0]
-    acc_freqs = 0
-    acc_es = 0
+    acc_freqs = freqs[i]
+    acc_es = es[i]
+    i += 1
     while True:
+        if acc_es >= error:
+            break
         acc_es += es[i]
         acc_freqs += freqs[i]
         acc_intervals = (acc_intervals[0], intervals[i][1])
         i += 1
 
-        if acc_es >= error:
-            break
 
     adjust_intervals.append(acc_intervals)
     adjust_freqs.append(acc_freqs)
@@ -161,16 +189,17 @@ def adjust(intervals, freqs, es, error=5.0):
 
     j = len(intervals) - 1
     acc_intervals = intervals[-1]
-    acc_freqs = 0
-    acc_es = 0
+    acc_freqs = freqs[j]
+    acc_es = es[j]
+    j -= 1
     while True:
+        if acc_es >= error:
+            break
         acc_es += es[j]
         acc_freqs += freqs[j]
         acc_intervals = (intervals[j][0], acc_intervals[1])
         j -= 1
 
-        if acc_es >= error:
-            break
 
     for h in range(i, j + 1):
         adjust_intervals.append(intervals[h])
@@ -183,15 +212,15 @@ def adjust(intervals, freqs, es, error=5.0):
 
     return adjust_intervals, adjust_freqs, adjust_es
 
-def chi_square(n, number_of_class, class_intervals, mean, std_deviation_value, freqs):
-    df = number_of_class - 2 - 1
-    chi2_critical = stats.chi2.ppf(0.95, df)
+def chi_square(n, class_intervals, mean, std_deviation_value, freqs):
 
     z1s, z2s = calculate_zs(class_intervals, mean, std_deviation_value)
     p_z1s_z2s = calculate_probability(z1s, z2s)
     es = calculate_es(p_z1s_z2s, n)
     adjust_intervals, adjust_freqs, adjust_es = adjust(class_intervals, freqs, es)
     qui_squares = calculate_qui_squares(adjust_freqs, adjust_es)
+    df = len(adjust_intervals) - 2 - 1
+    chi2_critical = stats.chi2.ppf(0.95, df)
 
     print("TESTE DE ADERÊNCIA " + "="*219)
     print()
@@ -206,6 +235,7 @@ def chi_square(n, number_of_class, class_intervals, mean, std_deviation_value, f
     print("AJUSTE TESTE DE ADERÊNCIA")
     print(f"Intervalo ajustado {adjust_intervals}")
     print(f"Frequência ajustada {adjust_freqs}")
+    print(f"Soma da frequência ajustada {sum(adjust_freqs)}")
     print(f"Probabilidade esperada ajustada {adjust_es}")
     print(f"Qui squares {qui_squares}")
     print(f"Qui square {sum(qui_squares)}")
@@ -245,12 +275,12 @@ def dict2xlsx(data_dict, name="output.xlsx"):
     # Salvar o DataFrame em um arquivo Excel
     df.to_excel(f'{name}', index=False)
 
-def graphs(data, path=None):
+def graphs(data, class_number, path=None):
     # Criação da figura e subplots
     fig, axs = plt.subplots(1, 3, figsize=(18, 5))
 
     # Histograma
-    axs[0].hist(data, bins='auto', alpha=0.7, rwidth=0.85)
+    axs[0].hist(data, bins=class_number, alpha=0.7, rwidth=0.85)
     axs[0].set_title('Histograma dos Dados')
     # axs[0].set_xlabel('Valor')
     # axs[0].set_ylabel('Frequência')
@@ -279,11 +309,11 @@ def part_2(data, name):
     number_of_class = model["numero de classes"]
     class_intervals = model["intervalos"]
     freqs = model["freqs"]
-    mean = model["media"]
-    std_deviation_value = model["desvio padrao"]
+    weighted_average = model["media ponderada"]
+    std_deviation_value = model["desvpad"]
 
-    chi_square_result = chi_square(n, number_of_class, class_intervals, mean, std_deviation_value, freqs)
-    graphs(data, f"datas/{name}_normal.png")
+    chi_square_result = chi_square(n, class_intervals, weighted_average, std_deviation_value, freqs)
+    graphs(data, number_of_class, f"datas/{name}_normal.png")
     dict2xlsx(model, f"datas/modelo-descritivo-{name}.xlsx")
     dict2xlsx(chi_square_result, f"datas/teste-aderencia-{name}.xlsx")
 
@@ -295,13 +325,13 @@ def part_2(data, name):
     number_of_class = model["numero de classes"]
     class_intervals = model["intervalos"]
     freqs = model["freqs"]
-    mean = model["media"]
-    std_deviation_value = model["desvio padrao"]
+    weighted_average = model["media ponderada"]
+    std_deviation_value = model["desvpad"]
 
-    chi_square_result = chi_square(n, number_of_class, class_intervals, mean, std_deviation_value, freqs)
-    graphs(data, f"datas/{name}_lognormal.png")
+    chi_square_result = chi_square(n, class_intervals, weighted_average, std_deviation_value, freqs)
+    graphs(data, number_of_class, f"datas/{name}_lognormal.png")
 
-def part_3(sample1, sample2):
+def part_3(sample1, sample2, path=None):
     # Estatísticas descritivas
     n1, n2 = len(sample1), len(sample2)
     mean1, mean2 = np.mean(sample1), np.mean(sample2)
@@ -346,7 +376,8 @@ def part_3(sample1, sample2):
         'IC diferença médias (upper)': ci_mean_upper
     }
 
-    dict2xlsx(results, "datas/estatisticas-parametricas.xlsx")
+    if path:
+        dict2xlsx(results, "datas/estatisticas-parametricas.xlsx")
 
     return results
 
@@ -367,28 +398,33 @@ def main():
     excel_path = args.excel_path
     dataframe = pd.read_excel(excel_path)
 
-    filter_1 = [lambda df: df['Marca'] == "AMSTEL LAGER",
-                lambda df: df["C03 - VIDRO 600ML RET"].notna(),
-                lambda df: df["Seg"] == 2,
-                lambda df: df["Produto"] == "CERVEJA"]
+    embalagem = "C03 - VIDRO 600ML RET"
+    produto = "CERVEJA"
+    marca1 = "AMSTEL LAGER"
+    marca2 = "ANTARCTICA PILSEN"
+    seg1 = 2
+    seg2 = 2
 
-    filter_2 = [lambda df: df['Marca'] == "ANTARCTICA PILSEN",
-                lambda df: df["C03 - VIDRO 600ML RET"].notna(),
-                lambda df: df["Seg"] == 2,
-                lambda df: df["Produto"] == "CERVEJA"]
+    filter_1 = [lambda df: df['Marca'] == marca1,
+                lambda df: df[embalagem].notna(),
+                lambda df: df["Seg"] == seg1,
+                lambda df: df["Produto"] == produto]
 
-    amstel_lager = filter_excel(dataframe, filter_1)
-    antarctica_pilsen = filter_excel(dataframe, filter_2)
+    filter_2 = [lambda df: df['Marca'] == marca2,
+                lambda df: df[embalagem].notna(),
+                lambda df: df["Seg"] == seg2,
+                lambda df: df["Produto"] == produto]
 
-    col = "C03 - VIDRO 600ML RET"
+    data1 = filter_excel(dataframe, filter_1)
+    data2 = filter_excel(dataframe, filter_2)
 
-    amstel_lager_prices = amstel_lager[col]
-    antarctica_pilsen_prices = antarctica_pilsen[col]
+    data1_prices = data1[embalagem]
+    data2_prices = data2[embalagem]
 
-    part_2(amstel_lager_prices, "AMSTEL-LAGER")
-    part_2(antarctica_pilsen_prices, "ANTARCTICA-PILSEN")
+    part_2(data1_prices, marca1)
+    part_2(data2_prices, marca2)
 
-    part_3(amstel_lager_prices, antarctica_pilsen_prices)
+    part_3(data1_prices, data2_prices, f"datas/estatisticas-parametricas-{marca1}-{marca2}.xlsx")
 
     # https://ovictorviana.medium.com/teste-de-hip%C3%B3tese-com-python-ba5d751f156c
 
