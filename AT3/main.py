@@ -7,11 +7,12 @@ import scipy.stats as stats
 import matplotlib.pyplot as plt
 
 
+def show_dict(data_dict):
+    for k in data_dict:
+        print(f"{k} {data_dict[k]}")
+
 def sturges_formula(n):
     return 1 + 3.322 * math.log(n, 10)
-
-def square_root(n):
-    return math.sqrt(n)
 
 def get_class_interval(minimun, number_of_class, c):
     return [(minimun + i * c, minimun + (i + 1) * c) for i in range(number_of_class)]
@@ -49,7 +50,6 @@ def detect_outliers(data):
 def calculate_descriptive_model(data):
     n = len(data)
     sturges = sturges_formula(n)
-    root = square_root(n)
     number_of_class = sturges
 
     minimum = data.min()
@@ -72,6 +72,7 @@ def calculate_descriptive_model(data):
     xis_dot_pis = calculate_xi_dot_pi(xis, pis)
     weighted_average = sum(xis_dot_pis)
     qdp = calculate_qdp(xis, pis, mean)
+    variance_value = sum(qdp)
     outliers, lower_bound, upper_bound = detect_outliers(data)
 
     relative_error = abs(mean - weighted_average) / mean
@@ -79,47 +80,8 @@ def calculate_descriptive_model(data):
     assi = (weighted_average - moda) / std_deviation_value
     dist = data.skew()
 
-    print("MODELO DESCRITIVO " + "="*220)
-    print()
-    print(f"Número de dados {n}")
-    print(f"Número de classes sturgues {sturges}")
-    print(f"Número de classes raiz {root}")
-    print(f"Número de classes escolhido {number_of_class}")
-    print()
-    print(f"Valor mínimo {minimum}")
-    print(f"Valor máximo {maximum}")
-    print(f"Valor de R {r}")
-    print(f"Valor de C {c}")
-    print()
-    print(f"Média {mean}")
-    print(f"Mediana {median}")
-    print(f"Variância {variance_value}")
-    print(f"Desvio Padrão {std_deviation_value}")
-    print(f"Moda {moda}")
-    print()
-    print(f"Intervalos da classes {class_intervals}")
-    print(f"Ponto médio dos intervalos {xis}")
-    print(f"Frequências dos dados {freqs}")
-    print(f"Soma das frequências {sum(freqs)}")
-    print(f"Probabilidade de cada intervalo {pis}")
-    print(f"Probabilidade de cada intervalo acumulada {Pis}")
-    print(f"Probabilidade x Ponto médio de cada intervalo {xis_dot_pis}")
-    print(f"Média ponderada {weighted_average}")
-    print(f"QDP {qdp}")
-    print(f"Variância sum(qdp) {sum(qdp)}")
-    print(f"Desvio padrão sqrt(sum(qdp)) {math.sqrt(sum(qdp))}")
-    print()
-    print(f"Erro relativo {relative_error}")
-    print(f"CV {CV}")
-    print(f"Assimetria {assi}")
-    print(f"Distorção {dist}")
-    print(f"Limite inferior {lower_bound} e limite superior {upper_bound}")
-    print(f"Outliers detectados: {outliers.tolist()}")
-    print("="*238)
-    print()
-
     return {
-        "dados": data,
+        "dados": list(data),
         "numero de dados": n,
         "numero de classes": math.ceil(number_of_class),
         "max": maximum,
@@ -222,27 +184,6 @@ def chi_square(n, class_intervals, mean, std_deviation_value, freqs):
     df = len(adjust_intervals) - 2 - 1
     chi2_critical = stats.chi2.ppf(0.95, df)
 
-    print("TESTE DE ADERÊNCIA " + "="*219)
-    print()
-    print(f"Valores de z1 {z1s}")
-    print(f"Valores de z2 {z2s}")
-    print(f"P(z1 < Z < z2) {p_z1s_z2s}")
-    print(f"Soma de probabilidade {sum(p_z1s_z2s)}")
-    print(f"Probabilidades esperadas {es}")
-    print(f"Soma das probabilidades esperadas {sum(es)}")
-    print()
-
-    print("AJUSTE TESTE DE ADERÊNCIA")
-    print(f"Intervalo ajustado {adjust_intervals}")
-    print(f"Frequência ajustada {adjust_freqs}")
-    print(f"Soma da frequência ajustada {sum(adjust_freqs)}")
-    print(f"Probabilidade esperada ajustada {adjust_es}")
-    print(f"Qui squares {qui_squares}")
-    print(f"Qui square {sum(qui_squares)}")
-    print(f"Qui square critico {chi2_critical}")
-    print("="*237)
-    print()
-
     return {
         "z1s": z1s,
         "z2s": z2s,
@@ -282,8 +223,6 @@ def graphs(data, class_number, path=None):
     # Histograma
     axs[0].hist(data, bins=class_number, alpha=0.7, rwidth=0.85)
     axs[0].set_title('Histograma dos Dados')
-    # axs[0].set_xlabel('Valor')
-    # axs[0].set_ylabel('Frequência')
 
     # Q-Q Plot
     stats.probplot(data, dist="norm", plot=axs[1])
@@ -302,50 +241,100 @@ def graphs(data, class_number, path=None):
 
     plt.show()
 
+def part_1(sample1, sample2, name1, name2):
+    print("PARTE 1")
 
-def part_2(data, name):
-    model = calculate_descriptive_model(data)
-    n = model["numero de dados"]
-    number_of_class = model["numero de classes"]
-    class_intervals = model["intervalos"]
-    freqs = model["freqs"]
-    weighted_average = model["media ponderada"]
-    std_deviation_value = model["desvpad"]
+    model1 = calculate_descriptive_model(sample1)
+    print(f"Modelo descritivo {name1}")
+    print()
+    show_dict(model1)
+    print()
 
-    chi_square_result = chi_square(n, class_intervals, weighted_average, std_deviation_value, freqs)
-    graphs(data, number_of_class, f"datas/{name}_normal.png")
-    dict2xlsx(model, f"datas/modelo-descritivo-{name}.xlsx")
-    dict2xlsx(chi_square_result, f"datas/teste-aderencia-{name}.xlsx")
+    model2 = calculate_descriptive_model(sample2)
+    print(f"Modelo descritivo {name2}")
+    print()
+    show_dict(model2)
+    print()
+    print("FIM DA PARTE 1")
+    print()
 
-    print("\nLOG NORMAL\n")
-    data = np.log(data)
-    
-    model = calculate_descriptive_model(data)
-    n = model["numero de dados"]
-    number_of_class = model["numero de classes"]
-    class_intervals = model["intervalos"]
-    freqs = model["freqs"]
-    weighted_average = model["media ponderada"]
-    std_deviation_value = model["desvpad"]
+    dict2xlsx(model1, f"datas/modelo-descritivo-{name1}.xlsx")
+    dict2xlsx(model2, f"datas/modelo-descritivo-{name2}.xlsx")
 
-    chi_square_result = chi_square(n, class_intervals, weighted_average, std_deviation_value, freqs)
-    graphs(data, number_of_class, f"datas/{name}_lognormal.png")
+    return model1, model2
 
-def part_3(sample1, sample2, path=None):
-    # Estatísticas descritivas
-    n1, n2 = len(sample1), len(sample2)
-    mean1, mean2 = np.mean(sample1), np.mean(sample2)
-    var1, var2 = np.var(sample1, ddof=1), np.var(sample2, ddof=1)
-    std1, std2 = np.std(sample1, ddof=1), np.std(sample2, ddof=1)
+def part_2(sample1, sample2, name1, name2):
+    def partial_analysis(sample, name):
+        model = calculate_descriptive_model(sample)
+        n = model["numero de dados"]
+        number_of_class = model["numero de classes"]
+        class_intervals = model["intervalos"]
+        freqs = model["freqs"]
+        weighted_average = model["media ponderada"]
+        std_deviation_value = model["desvpad"]
 
+        chi_square_result = chi_square(n, class_intervals, weighted_average, std_deviation_value, freqs)
+        dict2xlsx(chi_square_result.copy(), f"datas/teste-aderencia-{name}.xlsx")
+        graphs(sample, number_of_class, f"datas/{name}.png")
+        return chi_square_result
+
+    result_1  = partial_analysis(sample1, name1 + "_normal")
+    sample1 = np.log(sample1)
+    result_lognormal_1 = partial_analysis(sample1, name1 + "_lognormal")
+
+    print("PARTE 2")
+
+    print(f"Teste de aderência normal {name1}")
+    print()
+    show_dict(result_1)
+    print()
+
+    print(f"Teste de aderência lognormal {name1}")
+    print()
+    show_dict(result_lognormal_1)
+    print()
+
+    result_2 = partial_analysis(sample2, name2 + "_normal")
+    sample1 = np.log(sample2)
+    result_lognormal_2 = partial_analysis(sample2, name2 + "_lognormal")
+
+    print(f"Teste de aderência normal {name2}")
+    print()
+    show_dict(result_2)
+    print()
+
+    print(f"Teste de aderência lognormal {name2}")
+    print()
+    show_dict(result_lognormal_2)
+    print()
+
+    print("FIM DA PARTE 2")
+    print()
+
+    return result_1, result_lognormal_1, result_2, result_lognormal_2
+
+def variance_test(n1, n2, var1, var2, alpha=0.05):
     # Teste para a razão entre variâncias
     f_statistic = var1 / var2
     dfn, dfd = n1 - 1, n2 - 1
-    alpha = 0.05
     f_critical1 = stats.f.ppf(alpha / 2, dfn, dfd)
     f_critical2 = stats.f.ppf(1 - alpha / 2, dfn, dfd)
     reject_var_h0 = f_statistic < f_critical1 or f_statistic > f_critical2
 
+    # Construção do intervalo de confiança para a razão entre variâncias
+    ci_var_lower = f_statistic / f_critical2
+    ci_var_upper = f_statistic * f_critical2
+
+    return {
+        'Estatística F': f_statistic,
+        'Valor crítico F (lower)': f_critical1,
+        'Valor crítico F (upper)': f_critical2,
+        'IC razão variâncias (lower)': ci_var_lower,
+        'IC razão variâncias (upper)': ci_var_upper,
+        'Rejeição H0 variâncias iguais': reject_var_h0,
+    }
+
+def average_test(n1, n2, mean1, mean2, var1, var2, alpha=0.05):
     # Teste para a diferença de médias (assumindo variâncias iguais)
     pooled_var = ((n1 - 1) * var1 + (n2 - 1) * var2) / (n1 + n2 - 2)
     t_statistic = (mean1 - mean2) / np.sqrt(pooled_var * (1 / n1 + 1 / n2))
@@ -353,31 +342,41 @@ def part_3(sample1, sample2, path=None):
     t_critical = stats.t.ppf(1 - alpha / 2, df)
     reject_mean_h0 = abs(t_statistic) > t_critical
 
-    # Construção do intervalo de confiança para a razão entre variâncias
-    ci_var_lower = f_statistic / f_critical2
-    ci_var_upper = f_statistic * f_critical2
-
     # Construção do intervalo de confiança para a diferença de médias
     ci_mean_lower = (mean1 - mean2) - t_critical * np.sqrt(pooled_var * (1 / n1 + 1 / n2))
     ci_mean_upper = (mean1 - mean2) + t_critical * np.sqrt(pooled_var * (1 / n1 + 1 / n2))
 
-    # Resultados
-    results = {
-        'Estatística F': f_statistic,
-        'Valor crítico F (lower)': f_critical1,
-        'Valor crítico F (upper)': f_critical2,
-        'Rejeição H0 variâncias iguais': reject_var_h0,
+    return {
+        's²': pooled_var,
         'Estatística t': t_statistic,
         'Valor crítico t': t_critical,
-        'Rejeição H0 médias iguais': reject_mean_h0,
-        'IC razão variâncias (lower)': ci_var_lower,
-        'IC razão variâncias (upper)': ci_var_upper,
         'IC diferença médias (lower)': ci_mean_lower,
-        'IC diferença médias (upper)': ci_mean_upper
+        'IC diferença médias (upper)': ci_mean_upper,
+        'Rejeição H0 médias iguais': reject_mean_h0,
     }
 
-    if path:
-        dict2xlsx(results, "datas/estatisticas-parametricas.xlsx")
+def part_3(sample1, sample2):
+    model1 = calculate_descriptive_model(sample1)
+    model2 = calculate_descriptive_model(sample2)
+    n1, n2 = model1["numero de dados"], model2["numero de dados"]
+    mean1, mean2 = model1["media"], model2["media"]
+    var1, var2 = model1["var"], model2["var"]
+
+    variance_test_result = variance_test(n1, n2, var1, var2)
+    average_test_result = average_test(n1, n2, mean1, mean2, var1, var2)
+
+    results = variance_test_result | average_test_result
+
+    print("PARTE 3")
+    print()
+
+    for k in results:
+        print(f"{k}: {results[k]}")
+
+    print()
+    print("FIM DA PARTE 3")
+
+    dict2xlsx(results, "datas/estatisticas-parametricas.xlsx")
 
     return results
 
@@ -398,12 +397,19 @@ def main():
     excel_path = args.excel_path
     dataframe = pd.read_excel(excel_path)
 
-    embalagem = "C03 - VIDRO 600ML RET"
+    embalagem = "C04 - VIDRO 600ML DESC"
     produto = "CERVEJA"
-    marca1 = "AMSTEL LAGER"
-    marca2 = "ANTARCTICA PILSEN"
-    seg1 = 2
-    seg2 = 2
+    marca1 = "ORIGINAL"
+    marca2 = "SPATEN"
+    seg1 = 1
+    seg2 = 1
+
+    # embalagem = "C03 - VIDRO 600ML RET"
+    # produto = "CERVEJA"
+    # marca1 = "AMSTEL LAGER"
+    # marca2 = "ANTARCTICA PILSEN"
+    # seg1 = 2
+    # seg2 = 2
 
     filter_1 = [lambda df: df['Marca'] == marca1,
                 lambda df: df[embalagem].notna(),
@@ -415,18 +421,13 @@ def main():
                 lambda df: df["Seg"] == seg2,
                 lambda df: df["Produto"] == produto]
 
-    data1 = filter_excel(dataframe, filter_1)
-    data2 = filter_excel(dataframe, filter_2)
+    sample1 = filter_excel(dataframe, filter_1)[embalagem]
+    sample2 = filter_excel(dataframe, filter_2)[embalagem]
 
-    data1_prices = data1[embalagem]
-    data2_prices = data2[embalagem]
+    part_1(sample1.copy(deep=True), sample2.copy(deep=True), marca1, marca2)
+    part_2(sample1.copy(deep=True), sample2.copy(deep=True), marca1, marca2)
+    part_3(sample1.copy(deep=True), sample2.copy(deep=True))
 
-    part_2(data1_prices, marca1)
-    part_2(data2_prices, marca2)
-
-    part_3(data1_prices, data2_prices, f"datas/estatisticas-parametricas-{marca1}-{marca2}.xlsx")
-
-    # https://ovictorviana.medium.com/teste-de-hip%C3%B3tese-com-python-ba5d751f156c
 
 if __name__ == "__main__":
     main()
