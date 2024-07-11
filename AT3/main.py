@@ -281,16 +281,22 @@ def graphs(data, class_number, path=None):
     fig, axs = plt.subplots(1, 3, figsize=(18, 5))
 
     # Histograma
-    axs[0].hist(data, bins=class_number, alpha=0.7, rwidth=0.85)
-    axs[0].set_title('Histograma dos Dados')
+    axs[0].hist(data, bins=class_number, alpha=0.7)
+    axs[0].set_title('Histograma')
+    axs[0].set_xlabel('Valores')  # Título do eixo X para o histograma
+    axs[0].set_ylabel('Frequência')  # Título do eixo Y para o histograma
 
     # Q-Q Plot
     stats.probplot(data, dist="norm", plot=axs[1])
-    axs[1].set_title('Q-Q Plot dos Dados')
+    axs[1].set_title('Q-Q Plot')
+    axs[1].set_xlabel('Quantis Teóricos')  # Título do eixo X para o Q-Q Plot
+    axs[1].set_ylabel('Quantis dos Dados')  # Título do eixo Y para o Q-Q Plot
 
     # Boxplot
     axs[2].boxplot(data, vert=True)
-    axs[2].set_title('Boxplot dos Dados')
+    axs[2].set_title('Boxplot')
+    axs[2].set_xlabel('Dados')  # Título do eixo X para o Boxplot
+    axs[2].set_ylabel('Valores')  # Título do eixo Y para o Boxplot
     axs[2].set_xticks([])  # Remove os ticks do eixo y
 
     # Ajuste dos layouts
