@@ -6,6 +6,10 @@ import pandas as pd
 import scipy.stats as stats
 import matplotlib.pyplot as plt
 
+from openpyxl.styles import PatternFill
+from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl import Workbook
+
 
 def show_dict(data_dict):
     for k in data_dict:
@@ -205,16 +209,37 @@ def dict2xlsx(data_dict, name="output.xlsx"):
     max_length = max(len(v) if isinstance(v, list) else 1 for v in data_dict.values())
     for key, value in data_dict.items():
         if not isinstance(value, list) and not isinstance(value, tuple):
-            data_dict[key] = [value] + [None] * (max_length-1)
+            data_dict[key] = [value] + [""] * (max_length-1)
         else:
             # Se a lista for menor que o comprimento máximo, completar com None
-            data_dict[key] = list(data_dict[key]) + [None] * (max_length - len(data_dict[key]))
+            data_dict[key] = list(data_dict[key]) + [""] * (max_length - len(data_dict[key]))
 
     # Conversão do dicionário para DataFrame
     df = pd.DataFrame(data_dict)
 
-    # Salvar o DataFrame em um arquivo Excel
-    df.to_excel(f'{name}', index=False)
+    # # Salvar o DataFrame em um arquivo Excel
+    # df.to_excel(f'{name}', index=False)
+
+    # Criação de um Workbook do Openpyxl e adição de uma Sheet
+    wb = Workbook()
+    ws = wb.active
+
+    # Preenchimento da Sheet com dados do DataFrame
+    for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=True), 1):
+        for c_idx, value in enumerate(row, 1):
+            ws.cell(row=r_idx, column=c_idx, value=str(value))
+            if r_idx == 1:  # Aplicar a formatação na primeira linha
+                ws.cell(row=r_idx, column=c_idx).fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+
+    # Ajustar largura da coluna
+    for col in ws.columns:
+        max_length = max((len(str(cell.value)) if cell.value is not None else 0 for cell in col))
+        adjusted_width = (max_length + 2) * 1.2  # Ajuste para melhor visualização
+        ws.column_dimensions[col[0].column_letter].width = adjusted_width
+
+    # Salvar o Workbook
+    wb.save(name)
+
 
 def graphs(data, class_number, path=None):
     # Criação da figura e subplots
@@ -359,7 +384,7 @@ def part_3(sample1, sample2):
     model1 = calculate_descriptive_model(sample1)
     model2 = calculate_descriptive_model(sample2)
     n1, n2 = model1["numero de dados"], model2["numero de dados"]
-    mean1, mean2 = model1["media"], model2["media"]
+    mean1, mean2 = model1["media ponderada"], model2["media ponderada"]
     var1, var2 = model1["var"], model2["var"]
 
     variance_test_result = variance_test(n1, n2, var1, var2)
@@ -367,6 +392,7 @@ def part_3(sample1, sample2):
 
     results = variance_test_result | average_test_result
 
+    print()
     print("PARTE 3")
     print()
 
@@ -397,19 +423,19 @@ def main():
     excel_path = args.excel_path
     dataframe = pd.read_excel(excel_path)
 
-    embalagem = "C04 - VIDRO 600ML DESC"
-    produto = "CERVEJA"
-    marca1 = "ORIGINAL"
-    marca2 = "SPATEN"
-    seg1 = 1
-    seg2 = 1
-
-    # embalagem = "C03 - VIDRO 600ML RET"
+    # embalagem = "C04 - VIDRO 600ML DESC"
     # produto = "CERVEJA"
-    # marca1 = "AMSTEL LAGER"
-    # marca2 = "ANTARCTICA PILSEN"
-    # seg1 = 2
-    # seg2 = 2
+    # marca1 = "ORIGINAL"
+    # marca2 = "SPATEN"
+    # seg1 = 1
+    # seg2 = 1
+
+    embalagem = "C03 - VIDRO 600ML RET"
+    produto = "CERVEJA"
+    marca1 = "AMSTEL LAGER"
+    marca2 = "ANTARCTICA PILSEN"
+    seg1 = 2
+    seg2 = 2
 
     filter_1 = [lambda df: df['Marca'] == marca1,
                 lambda df: df[embalagem].notna(),
