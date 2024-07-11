@@ -6,7 +6,7 @@ import pandas as pd
 import scipy.stats as stats
 import matplotlib.pyplot as plt
 
-from openpyxl.styles import PatternFill
+from openpyxl.styles import PatternFill, Border, Side, Alignment
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl import Workbook
 
@@ -55,22 +55,17 @@ def calculate_descriptive_model(data):
     n = len(data)
     sturges = sturges_formula(n)
     number_of_class = sturges
-
     minimum = data.min()
     maximum = data.max()
     r = maximum - minimum
     c =  round(r / number_of_class, 4)
     mean = data.mean()
     median = data.median()
-    variance_value = data.var()
     std_deviation_value = data.std()
     moda = data.mode()[0]
-
     class_intervals = get_class_interval(minimum, math.ceil(number_of_class), c)
     xis = calculate_xis(class_intervals)
-
     freqs = calculate_freq(data, class_intervals)
-    
     pis = calculate_pis(freqs, n)
     Pis = [sum(pis[:i + 1]) for i in range(len(pis))]
     xis_dot_pis = calculate_xi_dot_pi(xis, pis)
@@ -78,7 +73,6 @@ def calculate_descriptive_model(data):
     qdp = calculate_qdp(xis, pis, mean)
     variance_value = sum(qdp)
     outliers, lower_bound, upper_bound = detect_outliers(data)
-
     relative_error = abs(mean - weighted_average) / mean
     CV = std_deviation_value / weighted_average
     assi = (weighted_average - moda) / std_deviation_value
@@ -96,14 +90,14 @@ def calculate_descriptive_model(data):
         "mediana": median,
         "var": variance_value,
         "desvpad": math.sqrt(sum(qdp)),
-        "intervalos": class_intervals,
-        "freqs": freqs,
-        "Xis": xis,
-        "pis": pis,
-        "Pis": Pis,
-        "xis*pis": xis_dot_pis,
-        "media ponderada": weighted_average,
+        "classes": class_intervals,
+        "ni": freqs,
+        "pi": pis,
+        "Pi": Pis,
+        "Xi": xis,
+        "Xi*pi": xis_dot_pis,
         "QDP": qdp,
+        "media ponderada": weighted_average,
         "erro relativo": relative_error,
         "CV": CV,
         "assimetria": assi,
@@ -166,7 +160,6 @@ def adjust(intervals, freqs, es, error=5.0):
         acc_intervals = (intervals[j][0], acc_intervals[1])
         j -= 1
 
-
     for h in range(i, j + 1):
         adjust_intervals.append(intervals[h])
         adjust_freqs.append(freqs[h])
@@ -189,18 +182,23 @@ def chi_square(n, class_intervals, mean, std_deviation_value, freqs):
     chi2_critical = stats.chi2.ppf(0.95, df)
 
     return {
-        "z1s": z1s,
-        "z2s": z2s,
-        "Oi": p_z1s_z2s,
+        "classes": class_intervals,
+        "Oi": freqs,
+        "z1": z1s,
+        "z2": z2s,
+        "P(z1<Z<z2)": p_z1s_z2s,
         "Ei": es,
-        "sum(Oi)": sum(p_z1s_z2s),
+        "classes ajustadas": adjust_intervals,
+        "Oi ajustado": adjust_freqs,
+        "Ei ajustada": adjust_es,
+        "QQI": qui_squares,
+        "sum(Oi)": sum(freqs),
+        "sum(P(z1<Z<z2))": sum(p_z1s_z2s),
         "sum(Ei)": sum(es),
-        "intervalo ajustado": adjust_intervals,
-        "frequência ajustada": adjust_freqs,
-        "probabilidade ajustada": adjust_es,
-        "qui squares": qui_squares,
-        "qui square": sum(qui_squares),
-        "qui square critico": chi2_critical,
+        "sum(Oi ajustado)": sum(adjust_freqs),
+        "sum(Ei ajustada)": sum(adjust_es),
+        "Qui-quadrado": sum(qui_squares),
+        "Qui-quadrado critico": chi2_critical,
     }
 
 def dict2xlsx(data_dict, name="output.xlsx"):
@@ -217,8 +215,34 @@ def dict2xlsx(data_dict, name="output.xlsx"):
     # Conversão do dicionário para DataFrame
     df = pd.DataFrame(data_dict)
 
-    # # Salvar o DataFrame em um arquivo Excel
-    # df.to_excel(f'{name}', index=False)
+    # Arredondando
+    def round_value(item, decimals=4):
+        # Se o item for uma tupla, arredondar cada elemento numérico dentro da tupla
+        if isinstance(item, tuple):
+            return tuple(round(x, decimals) if isinstance(x, (int, float)) else x for x in item)
+        # Se o item for um número (int ou float), arredondar diretamente
+        elif isinstance(item, (int, float)):
+            return round(item, decimals)
+        # Se o item não for nem tupla nem número, retornar o item sem modificação
+        return item
+
+    # Função para formatar a tupla no formato 'x[0] |- x[1]'
+    def format_interval(interval):
+        if isinstance(interval, tuple) or isinstance(interval, list):
+            return f"{interval[0]:.4f} |- {interval[1]:.4f}"
+        return interval
+
+    # Aplicando a função em uma coluna que contém tuplas com possíveis valores numéricos
+    for col in df.columns:
+        df[col] = df[col].apply(round_value)    
+
+    if 'classes' in df.columns:
+        # Aplicando a função à coluna 'A' se ela existir
+        df['classes'] = df['classes'].apply(format_interval)
+
+    if 'classes ajustadas' in df.columns:
+        # Aplicando a função à coluna 'A' se ela existir
+        df['classes ajustadas'] = df['classes ajustadas'].apply(format_interval)
 
     # Criação de um Workbook do Openpyxl e adição de uma Sheet
     wb = Workbook()
@@ -234,8 +258,19 @@ def dict2xlsx(data_dict, name="output.xlsx"):
     # Ajustar largura da coluna
     for col in ws.columns:
         max_length = max((len(str(cell.value)) if cell.value is not None else 0 for cell in col))
-        adjusted_width = (max_length + 2) * 1.2  # Ajuste para melhor visualização
+        adjusted_width = (max_length + 2) * 1.1  # Ajuste para melhor visualização
         ws.column_dimensions[col[0].column_letter].width = adjusted_width
+
+    # Alinhando
+    for cell in ws["1:1"]:  # "1:1" indica que a formatação será aplicada à primeira linha
+        cell.alignment = Alignment(horizontal="center")
+
+    # Definir o estilo de borda em negrito
+    borda_negrito = Side(border_style="thin", color="000000")  # "thick" para borda em negrito
+    borda_completa = Border(top=borda_negrito, left=borda_negrito, right=borda_negrito, bottom=borda_negrito)
+    for row in ws.iter_rows():
+        for cell in row:
+            cell.border = borda_completa
 
     # Salvar o Workbook
     wb.save(name)
@@ -293,8 +328,8 @@ def part_2(sample1, sample2, name1, name2):
         model = calculate_descriptive_model(sample)
         n = model["numero de dados"]
         number_of_class = model["numero de classes"]
-        class_intervals = model["intervalos"]
-        freqs = model["freqs"]
+        class_intervals = model["classes"]
+        freqs = model["ni"]
         weighted_average = model["media ponderada"]
         std_deviation_value = model["desvpad"]
 
@@ -422,13 +457,6 @@ def main():
 
     excel_path = args.excel_path
     dataframe = pd.read_excel(excel_path)
-
-    # embalagem = "C04 - VIDRO 600ML DESC"
-    # produto = "CERVEJA"
-    # marca1 = "ORIGINAL"
-    # marca2 = "SPATEN"
-    # seg1 = 1
-    # seg2 = 1
 
     embalagem = "C03 - VIDRO 600ML RET"
     produto = "CERVEJA"
