@@ -361,7 +361,7 @@ def part_2(sample1, sample2, name1, name2):
     print()
 
     result_2 = partial_analysis(sample2, name2 + "_normal")
-    sample1 = np.log(sample2)
+    sample2 = np.log(sample2)
     result_lognormal_2 = partial_analysis(sample2, name2 + "_lognormal")
 
     print(f"Teste de aderência normal {name2}")
@@ -386,12 +386,17 @@ def variance_test(n1, n2, var1, var2, alpha=0.05):
     f_critical1 = stats.f.ppf(alpha / 2, dfn, dfd)
     f_critical2 = stats.f.ppf(1 - alpha / 2, dfn, dfd)
     reject_var_h0 = f_statistic < f_critical1 or f_statistic > f_critical2
-
-    # Construção do intervalo de confiança para a razão entre variâncias
     ci_var_lower = f_statistic / f_critical2
     ci_var_upper = f_statistic * f_critical2
 
     return {
+        "n1": n1,
+        "n2": n2,
+        "var1": var1,
+        "var2": var2,
+        "dfn": dfn,
+        "dfd": dfd,
+        "alpha": alpha,
         'Estatística F': f_statistic,
         'Valor crítico F (lower)': f_critical1,
         'Valor crítico F (upper)': f_critical2,
@@ -413,9 +418,17 @@ def average_test(n1, n2, mean1, mean2, var1, var2, alpha=0.05):
     ci_mean_upper = (mean1 - mean2) + t_critical * np.sqrt(pooled_var * (1 / n1 + 1 / n2))
 
     return {
-        's²': pooled_var,
+        "n1": n1,
+        "n2": n2,
+        "media ponderada 1": mean1,
+        "media ponderada 2": mean2,
+        "var1": var1,
+        "var2": var2,
         'Estatística t': t_statistic,
+        "alpha": alpha,
         'Valor crítico t': t_critical,
+        'SE': np.sqrt(pooled_var * (1 / n1 + 1 / n2)),
+        's²': pooled_var,
         'IC diferença médias (lower)': ci_mean_lower,
         'IC diferença médias (upper)': ci_mean_upper,
         'Rejeição H0 médias iguais': reject_mean_h0,
@@ -431,21 +444,26 @@ def part_3(sample1, sample2):
     variance_test_result = variance_test(n1, n2, var1, var2)
     average_test_result = average_test(n1, n2, mean1, mean2, var1, var2)
 
-    results = variance_test_result | average_test_result
-
     print()
     print("PARTE 3")
     print()
 
-    for k in results:
-        print(f"{k}: {results[k]}")
-
+    print("Teste da razao das variâncias")
     print()
+    show_dict(variance_test_result)
+    print()
+
+    print("Teste da diferença das médias")
+    print()
+    show_dict(average_test_result)
+    print()
+
     print("FIM DA PARTE 3")
 
-    dict2xlsx(results, "datas/estatisticas-parametricas.xlsx")
+    dict2xlsx(variance_test_result, "datas/razao-das-variancias.xlsx")
+    dict2xlsx(average_test_result, "datas/diferenca-das-medias.xlsx")
 
-    return results
+    return variance_test_result, average_test_result
 
 def main():
 
