@@ -10,6 +10,10 @@ from openpyxl.styles import PatternFill, Border, Side, Alignment
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl import Workbook
 
+GRAPH_PATH = "graficos"
+SHEETS_PATH = "planilhas"
+DEFAULT_DATA_PATH = "dados"
+
 
 def show_dict(data_dict):
     for k in data_dict:
@@ -324,8 +328,8 @@ def part_1(sample1, sample2, name1, name2):
     print("FIM DA PARTE 1")
     print()
 
-    dict2xlsx(model1, f"datas/modelo-descritivo-{name1}.xlsx")
-    dict2xlsx(model2, f"datas/modelo-descritivo-{name2}.xlsx")
+    dict2xlsx(model1, f"{SHEETS_PATH}/modelo-descritivo-{name1}.xlsx")
+    dict2xlsx(model2, f"{SHEETS_PATH}/modelo-descritivo-{name2}.xlsx")
 
     return model1, model2
 
@@ -340,8 +344,8 @@ def part_2(sample1, sample2, name1, name2):
         std_deviation_value = model["desvpad"]
 
         chi_square_result = chi_square(n, class_intervals, weighted_average, std_deviation_value, freqs)
-        dict2xlsx(chi_square_result.copy(), f"datas/teste-aderencia-{name}.xlsx")
-        graphs(sample, number_of_class, f"datas/{name}.png")
+        dict2xlsx(chi_square_result.copy(), f"{SHEETS_PATH}/teste-aderencia-{name}.xlsx")
+        graphs(sample, number_of_class, f"{GRAPH_PATH}/{name}.png")
         return chi_square_result
 
     result_1  = partial_analysis(sample1, name1 + "_normal")
@@ -460,15 +464,15 @@ def part_3(sample1, sample2):
 
     print("FIM DA PARTE 3")
 
-    dict2xlsx(variance_test_result, "datas/razao-das-variancias.xlsx")
-    dict2xlsx(average_test_result, "datas/diferenca-das-medias.xlsx")
+    dict2xlsx(variance_test_result, f"{SHEETS_PATH}/razao-das-variancias.xlsx")
+    dict2xlsx(average_test_result, f"{SHEETS_PATH}/diferenca-das-medias.xlsx")
 
     return variance_test_result, average_test_result
 
 def main():
 
     parser = argparse.ArgumentParser(description="Lê um arquivo Excel e imprime na tela.")
-    parser.add_argument("--excel_path", help="Caminho do arquivo Excel para ser lido.", default="./datas/BASE DADOS_DESAFIO INDIVIDUAL.xlsx")
+    parser.add_argument("--excel_path", help="Caminho do arquivo Excel para ser lido.", default=f"./{DEFAULT_DATA_PATH}/BASE DADOS_DESAFIO INDIVIDUAL.xlsx")
     args = parser.parse_args()
 
     def filter_excel(df, filters):
